@@ -7,23 +7,23 @@ on:
 
 jobs:
   build:
-
-    runs-on: ${{ matrix.os }}
-
+    name: Build and Release
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v2
-      - name: Setup Rust
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
           override: true
-          components: rustfmt
 
-      - name: Check formatting
+      - name: Format code
         uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -34,18 +34,42 @@ jobs:
         with:
           command: test
 
-      - name: Build
+      - name: Build binary
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release
+          args: --release --target ${{ matrix.os }}
 
-      - name: Upload Release Asset
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: binary-${{ matrix.os }}
+          path: target/${{ matrix.os }}/release/glove-80-firmware-updater
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload binaries to release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./target/release/glove80-firmware-updater
-          asset_name: glove80-firmware-updater-${{ matrix.os }}
-          asset_content_type: application/octet-stream
+          asset_path: ./binary-*.zip
+          asset_name: binary-${{ matrix.os }}.zip
+          asset_content_type: application/zip
