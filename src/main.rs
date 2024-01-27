@@ -1,6 +1,4 @@
 use clap::Parser;
-use std::path::PathBuf;
-use std::process::exit;
 use std::time::Duration;
 use std::{fs, thread};
 use sysinfo::Disks;
@@ -11,78 +9,54 @@ struct Args {
     #[arg(short = 'f', long)]
     file: String,
 
-    #[arg(short = 'l', long, default_value = "GLV80LHBOOT")]
-    left_hand_destination: String,
+    #[arg(short = 'n', long, default_value = "2")]
+    times_to_copy: usize,
 
-    #[arg(short = 'r', long, default_value = "GLV80RHBOOT")]
-    right_hand_destination: String,
+    #[arg(short = 'd', long, default_value = DEFAULT_FIRMWARE_FILENAME)]
+    destination: String,
 }
 
-const DEFAULT_SLEEP_DURATION: Duration = Duration::from_secs(5);
+const DEFAULT_FIRMWARE_FILENAME: &str = "GLV80LHBOOT";
 
-//! > **Glove80 Firmware Updater**
-//!
-//! A simple command line utility to update the firmware on a [Glove80]((https://www.moergo.com/) device.
-//!
-//! # Examples
-//!
-//! Run the firmware updater with default values:
-//! ```bash
-//! glove80-firmware-updater -f firmware.uf2
-//! ```
-//! Run the firmware updater with a full path to the firmware file:
-//! ```bash
-//! glove80-firmware-updater -f /home/user/firmware.uf2
-//! ```
-//!
-//! Run the firmware updater with non-default values:
-//! ```bash
-//! glove80-firmware-updater -f firmware.uf2 -l GLV80LHBOOT -r GLV80RHBOOT
-//! ```
-//!
+pub(crate) fn filename_from_path(path: &str) -> String {
+    let path = std::path::Path::new(path);
+    let filename = path.file_name().unwrap();
+    filename.to_str().unwrap().to_string()
+}
+
 fn main() {
     let args = Args::parse();
 
-    // check that the firmware file exists both relative to the executable and as a full path
-    let firmware_file = PathBuf::from(&args.file);
-    if !firmware_file.exists() {
-        println!("Error: {} does not exist!", firmware_file.to_str().unwrap());
-        exit(1);
-    }
+    let firmware_file = &args.file;
+    let times_to_copy = &args.times_to_copy;
+    let firmware_filename = filename_from_path(firmware_file);
+    let mut times_copied: usize = 0;
 
-    // get the filename from the path
-    let firmware_filename = firmware_file
-        .file_name()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string();
-    let mut remaining_destinations =
-        vec![&args.left_hand_destination, &args.right_hand_destination];
-
-    let mut disks = Disks::new_with_refreshed_list();
-
-    while !remaining_destinations.is_empty() {
-        disks.refresh_list();
+    while times_copied < *times_to_copy {
+        let disks = Disks::new_with_refreshed_list();
         for disk in &disks {
             if let Some(disk_name) = disk.name().to_str() {
-                if remaining_destinations.contains(&&disk_name.to_string()) {
+                if disk_name == args.destination {
                     println!(
                         "Copying firmware to {}",
                         disk.mount_point().to_str().unwrap()
                     );
-                    fs::copy(&firmware_file, disk.mount_point().join(&firmware_filename)).unwrap();
-
+                    fs::copy(
+                        firmware_file,
+                        format!(
+                            "{}/{}",
+                            disk.mount_point().to_str().unwrap(),
+                            firmware_filename
+                        ),
+                    )
+                    .unwrap();
+                    times_copied += 1;
                     println!("Firmware copied to device {:?}!", disk_name);
-                    remaining_destinations.retain(|&d| d != disk_name);
-
-                    if remaining_destinations.is_empty() {
-                        println!("Firmware update complete!");
-                        exit(0);
-                    }
                 }
             }
         }
-        thread::sleep(DEFAULT_SLEEP_DURATION);
+        thread::sleep(Duration::from_secs(5));
     }
+
+    println!("Firmware update complete!");
 }
