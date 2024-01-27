@@ -1,0 +1,13 @@
+[package]
+name = "glove80-firmware-updater"
+version = "0.1.0"
+edition = "2021"
+authors = ["Jeremy Arnold <jeremy@possiblyfaulty.com>"]
+repository = "https://github.com/jereanon/glove80-firmware-updater"
+license = "BSD-2-Clause"
+description = "A tool for updating the firmware on the Glove80 keyboard"
+readme =  "README.md"
+
+[dependencies]
+clap = { version = "4.4.18", features = ["derive"] }
+sysinfo = "0.30.5"
