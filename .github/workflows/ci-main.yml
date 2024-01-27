@@ -7,11 +7,20 @@ on:
 
 jobs:
   build:
-    name: Build and Release
-    runs-on: ubuntu-latest
+    name: Build on ${{ matrix.target }}
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - runs-on: windows-latest
+            target: x86_64-pc-windows-gnu
+          - runs-on: macos-latest
+            target: x86_64-apple-darwin
+          - runs-on: macos-latest
+            target: aarch64-apple-darwin
+          - runs-on: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -22,6 +31,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+          target: ${{ matrix.target }}
 
       - name: Format code
         uses: actions-rs/cargo@v1
@@ -38,13 +48,13 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --target ${{ matrix.os }}
+          args: --release --target ${{ matrix.target }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: binary-${{ matrix.os }}
-          path: target/${{ matrix.os }}/release/glove-80-firmware-updater
+          name: binary-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/glove80-firmware-updater
 
   release:
     needs: build
@@ -71,5 +81,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./binary-*.zip
-          asset_name: binary-${{ matrix.os }}.zip
+          asset_name: binary-${{ matrix.target }}.zip
           asset_content_type: application/zip
