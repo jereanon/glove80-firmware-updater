@@ -1,4 +1,3 @@
-//! > **Glove80 Firmware Updater**
 //!
 //! A simple command line utility to update the firmware on a [Glove80]((https://www.moergo.com/) device.
 //!
