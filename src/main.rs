@@ -1,7 +1,8 @@
 use clap::Parser;
+use std::process::exit;
 use std::time::Duration;
 use std::{fs, thread};
-use sysinfo::Disks;
+use sysinfo::{Disks, System};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -32,9 +33,17 @@ fn main() {
     let firmware_filename = filename_from_path(firmware_file);
     let mut times_copied: usize = 0;
 
-    while times_copied < *times_to_copy {
+    loop {
+        let mut system = System::new_all();
+        system.refresh_all();
         let disks = Disks::new_with_refreshed_list();
         for disk in &disks {
+            println!("times copied: {}", times_copied);
+            if times_copied == *times_to_copy {
+                println!("Firmware update complete!");
+                exit(0);
+            }
+
             if let Some(disk_name) = disk.name().to_str() {
                 if disk_name == args.destination {
                     println!(
@@ -51,12 +60,12 @@ fn main() {
                     )
                     .unwrap();
                     times_copied += 1;
+                    // this should allow the device to disconnect automatically
+                    thread::sleep(Duration::from_secs(5));
                     println!("Firmware copied to device {:?}!", disk_name);
                 }
             }
         }
         thread::sleep(Duration::from_secs(5));
     }
-
-    println!("Firmware update complete!");
 }
