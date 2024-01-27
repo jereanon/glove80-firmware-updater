@@ -2,6 +2,8 @@ name: Deploy
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "[0-9]+.[0-9]+.[0-9]+"
 
@@ -9,6 +11,29 @@ permissions:
   contents: write
 
 jobs:
+  format-and-test:
+    - name: Rustfmt && test
+      runs-on: ubuntu-latest
+
+    - uses: actions/checkout@v2
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        components: rustfmt
+
+    - name: Check formatting
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: -- --check
+
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+
   build-and-upload:
     name: Build and upload
     runs-on: ${{ matrix.os }}
@@ -23,6 +48,10 @@ jobs:
           - build: macos
             os: macos-latest
             target: x86_64-apple-darwin
+
+          - build: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
 
     steps:
       - name: Checkout
