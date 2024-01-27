@@ -1,24 +1,3 @@
-//! > **Glove80 Firmware Updater**
-//!
-//! A simple command line utility to update the firmware on a [Glove80]((https://www.moergo.com/) device.
-//!
-//! # Examples
-//!
-//! Run the firmware updater with default values:
-//! ```bash
-//! glove80-firmware-updater -f firmware.uf2
-//! ```
-//! Run the firmware updater with a full path to the firmware file:
-//! ```bash
-//! glove80-firmware-updater -f /home/user/firmware.uf2
-//! ```
-//!
-//! Run the firmware updater with non-default values:
-//! ```bash
-//! glove80-firmware-updater -f firmware.uf2 -l GLV80LHBOOT -r GLV80RHBOOT
-//! ```
-//!
-
 use clap::Parser;
 use std::path::PathBuf;
 use std::process::exit;
@@ -41,6 +20,26 @@ struct Args {
 
 const DEFAULT_SLEEP_DURATION: Duration = Duration::from_secs(5);
 
+//! > **Glove80 Firmware Updater**
+//!
+//! A simple command line utility to update the firmware on a [Glove80]((https://www.moergo.com/) device.
+//!
+//! # Examples
+//!
+//! Run the firmware updater with default values:
+//! ```bash
+//! glove80-firmware-updater -f firmware.uf2
+//! ```
+//! Run the firmware updater with a full path to the firmware file:
+//! ```bash
+//! glove80-firmware-updater -f /home/user/firmware.uf2
+//! ```
+//!
+//! Run the firmware updater with non-default values:
+//! ```bash
+//! glove80-firmware-updater -f firmware.uf2 -l GLV80LHBOOT -r GLV80RHBOOT
+//! ```
+//!
 fn main() {
     let args = Args::parse();
 
