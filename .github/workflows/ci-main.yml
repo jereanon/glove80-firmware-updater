@@ -44,33 +44,20 @@ jobs:
         with:
           command: test
 
-      - name: Get version
-        id: get_version
-        run: echo "::set-output name=version::$(cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "glove80-firmware-updater") | .version')"
-
-      - name: Create tag
-        id: create_tag
-        uses: actions/github-script@v5
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          script: |
-            const { repo: { owner, repo } } = context;
-            const tag = `v${"${{ steps.get_version.outputs.version }}"}; // use the version from Cargo.toml
-            const { data: createdTag } = await github.rest.git.createTag({
-              owner,
-              repo,
-              tag,
-              message: `Release ${tag}`,
-              object: context.sha,
-              type: 'commit',
-            });
-            await github.rest.git.createRef({
-              owner,
-              repo,
-              ref: `refs/tags/${tag}`,
-              sha: createdTag.sha,
-            });
-            return tag;
-          result-encoding: string
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Changes in this Release
+            - First Change
+            - Second Change
+          draft: false
+          prerelease: false
 
       - name: Build binary
         uses: actions-rs/cargo@v1
@@ -85,16 +72,22 @@ jobs:
           path: target/${{ matrix.target }}/release/glove80-firmware-updater
 
   release:
-    needs: build
+    name: release ${{ matrix.target }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            archive: tar.gz tar.xz tar.zst
+          - target: x86_64-apple-darwin
+            archive: zip
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v2
-
-      - name: Create and upload release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.create_tag.outputs.result }}
-          files: ./binary-*.zip
+      - uses: actions/checkout@master
+      - name: Compile and release
+        uses: rust-build/rust-build.action@v1.4.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          RUSTTARGET: ${{ matrix.target }}
+          ARCHIVE_TYPES: ${{ matrix.archive }}
